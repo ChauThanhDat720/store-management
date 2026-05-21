@@ -78,4 +78,35 @@ export type AbsentRecord = {
   createdAt: string;
 };
 
+export type ShiftTask = {
+  _id: string;
+  date: string;
+  shift: 'morning' | 'afternoon' | 'evening';
+  taskName: string;
+  isCompleted: boolean;
+  completedBy?: {
+    _id: string;
+    fullName: string;
+  };
+  completedAt?: string;
+};
+
+export type ShiftTaskTemplate = {
+  _id: string;
+  shift: 'morning' | 'afternoon' | 'evening';
+  taskName: string;
+};
+
+export type NotificationRecord = {
+  _id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'info' | 'warning' | 'success' | 'ai_reminder';
+  isRead: boolean;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  readAt?: string;
+};
+
 export {};

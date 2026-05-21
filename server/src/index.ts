@@ -10,6 +10,10 @@ import employeeRoutes from './routes/employeeRoutes';
 import attendanceRoutes from './routes/attendanceRoutes';
 import scheduleRoutes from './routes/scheduleRoutes';
 import absentRoutes from './routes/absentRoutes';
+import taskRoutes from './routes/taskRoutes';
+import aiRoutes from './routes/aiRoutes';
+import payrollRoutes from './routes/payrollRoutes';
+import notificationRoutes from './routes/notificationRoutes';
 import { startAutoCheckAbsent } from './controllers/attendanceController';
 import { errorMiddleware } from './middleware/errorMiddleware';
 import { initSocket } from './utils/socketManager';
@@ -52,6 +56,10 @@ app.use('/api/employees', employeeRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/schedules', scheduleRoutes);
 app.use('/api/absent', absentRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/payroll', payrollRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Route mặc định
 app.get('/', (req, res) => {

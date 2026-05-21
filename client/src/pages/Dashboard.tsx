@@ -1,6 +1,6 @@
 import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import api from '../services/api';
-import { UserPlus, Users, X, Save, DollarSign, LogOut, Search, Calendar, MapPin, Clock, FileSpreadsheet, TrendingUp } from 'lucide-react';
+import { UserPlus, Users, X, Save, DollarSign, LogOut, Search, Calendar, MapPin, Clock, FileSpreadsheet, TrendingUp, ClipboardList, Bell } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import CheckAttendance from '../components/CheckAttendance';
 import ShiftCalendar from '../components/ShiftCalendar';
@@ -8,6 +8,9 @@ import AdminScheduleOverview from '../components/AdminScheduleOverview';
 import AdminAttendanceSheet from '../components/AdminAttendanceSheet';
 import AdminAttendanceSummary from '../components/AdminAttendanceSummary';
 import AbsentList from '../components/AbsentList';
+import TaskTemplateManager from '../components/TaskTemplateManager';
+import AIChat from '../components/AIChat';
+import NotificationCenter from '../components/NotificationCenter';
 import type { Employee, AttendanceRecord } from '../types';
 import { io } from 'socket.io-client';
 
@@ -17,7 +20,7 @@ function Dashboard() {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'employees' | 'attendance' | 'schedules' | 'admin_schedules' | 'attendance_sheet' | 'summary' | 'absents'>('schedules');
+  const [activeTab, setActiveTab] = useState<'employees' | 'attendance' | 'schedules' | 'admin_schedules' | 'attendance_sheet' | 'summary' | 'absents' | 'task_templates' | 'notifications'>('schedules');
   const [filterDate, setFilterDate] = useState<string>('');
 
   const [formData, setFormData] = useState<Omit<Employee, '_id'>>({
@@ -59,7 +62,12 @@ function Dashboard() {
   }, []);
 
   useEffect(() => {
-    const socket = io('http://localhost:5000');
+    const socket = io('http://localhost:5000', {
+      query: {
+        userId: user?.id,
+        role: user?.role,
+      },
+    });
 
     socket.on('attendanceUpdated', () => {
       // Khi có người điểm danh, lấy lại danh sách
@@ -80,7 +88,7 @@ function Dashboard() {
     return () => {
       socket.disconnect();
     };
-  }, [filterDate]);
+  }, [filterDate, user?.id, user?.role]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -121,7 +129,7 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 selection:bg-blue-500/30">
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-10">
+      <div className="w-full max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-10 py-6 lg:py-10 overflow-hidden">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
           <div>
             <h1 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent mb-2">
@@ -151,41 +159,55 @@ function Dashboard() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
-          <div className="lg:col-span-3">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 mb-12 min-w-0">
+          <div className="lg:col-span-3 min-w-0">
             <CheckAttendance onSuccess={fetchAttendance} />
           </div>
 
-          <div className="lg:col-span-9 space-y-10 p-4 lg:p-6">
-            <div className="flex gap-4 mb-6">
+          <div className="lg:col-span-9 min-w-0 space-y-8 lg:space-y-10 p-0 sm:p-4 lg:p-6">
+            <div className="flex flex-wrap gap-2 sm:gap-3 mb-6 max-w-full overflow-hidden">
               <button
                 onClick={() => setActiveTab('schedules')}
-                className={`flex items-center gap-2 px-6 py-2 rounded-xl font-semibold transition-all ${activeTab === 'schedules' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
+                className={`flex min-w-0 items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === 'schedules' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
               >
                 <Calendar size={18} /> Lịch làm & Điểm danh
               </button>
               <button
                 onClick={() => setActiveTab('attendance')}
-                className={`flex items-center gap-2 px-6 py-2 rounded-xl font-semibold transition-all ${activeTab === 'attendance' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
+                className={`flex min-w-0 items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === 'attendance' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
               >
                 <Clock size={18} /> Lịch sử điểm danh
               </button>
               <button
                 onClick={() => setActiveTab('employees')}
-                className={`flex items-center gap-2 px-6 py-2 rounded-xl font-semibold transition-all ${activeTab === 'employees' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
+                className={`flex min-w-0 items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === 'employees' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
               >
                 <Users size={18} /> Quản lý nhân viên
               </button>
               <button
                 onClick={() => setActiveTab('absents')}
-                className={`flex items-center gap-2 px-6 py-2 rounded-xl font-semibold transition-all ${activeTab === 'absents' ? 'bg-pink-600 text-white shadow-lg shadow-pink-600/20' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
+                className={`flex min-w-0 items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === 'absents' ? 'bg-pink-600 text-white shadow-lg shadow-pink-600/20' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
               >
-                <FileSpreadsheet size={18} /> Đơn xin hủy ca
+                <FileSpreadsheet size={18} /> Đơn xin nghỉ
+              </button>
+              <button
+                onClick={() => setActiveTab('notifications')}
+                className={`flex min-w-0 items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === 'notifications' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
+              >
+                <Bell size={18} /> Thong bao
               </button>
               {user?.role === 'admin' && (
                 <button
+                  onClick={() => setActiveTab('task_templates')}
+                  className={`flex min-w-0 items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === 'task_templates' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
+                >
+                  <ClipboardList size={18} /> Mẫu Checklist
+                </button>
+              )}
+              {user?.role === 'admin' && (
+                <button
                   onClick={() => setActiveTab('attendance_sheet')}
-                  className={`flex items-center gap-2 px-6 py-2 rounded-xl font-semibold transition-all ${activeTab === 'attendance_sheet' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
+                  className={`flex min-w-0 items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === 'attendance_sheet' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
                 >
                   <FileSpreadsheet size={18} /> Bảng công tổng hợp
                 </button>
@@ -193,7 +215,7 @@ function Dashboard() {
               {user?.role === 'admin' && (
                 <button
                   onClick={() => setActiveTab('summary')}
-                  className={`flex items-center gap-2 px-6 py-2 rounded-xl font-semibold transition-all ${activeTab === 'summary' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
+                  className={`flex min-w-0 items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === 'summary' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
                 >
                   <TrendingUp size={18} /> Thống kê tháng
                 </button>
@@ -339,6 +361,8 @@ function Dashboard() {
             
             {activeTab === 'schedules' && <ShiftCalendar />}
             {activeTab === 'absents' && <AbsentList />}
+            {activeTab === 'notifications' && <NotificationCenter />}
+            {activeTab === 'task_templates' && user?.role === 'admin' && <TaskTemplateManager />}
             {activeTab === 'admin_schedules' && user?.role === 'admin' && <AdminScheduleOverview />}
             {activeTab === 'attendance_sheet' && user?.role === 'admin' && <AdminAttendanceSheet />}
             {activeTab === 'summary' && user?.role === 'admin' && <AdminAttendanceSummary />}
@@ -470,6 +494,8 @@ function Dashboard() {
           </div>
         )}
       </div>
+      {/* AI Assistant Chat Widget */}
+      {user?.role === 'admin' && <AIChat />}
     </div>
   );
 }

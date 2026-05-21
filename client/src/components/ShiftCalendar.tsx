@@ -3,6 +3,7 @@ import api from '../services/api';
 import { ChevronLeft, ChevronRight, Info, CheckCircle2, X, MessageSquare, Save, Users, Clock, PlusCircle, MapPin, LogOut as LogOutIcon, Loader2, Calendar as CalendarIcon } from 'lucide-react';
 import type { ScheduleRecord, ShiftNoteRecord, AttendanceRecord, AbsentRecord } from '../types';
 import { useAuth } from '../context/AuthContext';
+import ShiftChecklist from './ShiftChecklist';
 
 const SHIFTS = [
   { id: 'morning', label: 'Sáng', time: '08:00 - 12:00' },
@@ -125,8 +126,14 @@ const ShiftCalendar: React.FC = () => {
       setAttLoading(true);
       const coords = await getLocation();
       const endpoint = type === 'in' ? '/attendance/checkin' : '/attendance/checkout';
-      await api.post(endpoint, { ...coords, scheduleId });
-      alert(`${type === 'in' ? 'Vào ca' : 'Tan ca'} thành công!`);
+      const res = await api.post(endpoint, { ...coords, scheduleId });
+      
+      if (type === 'out' && res.data.warning) {
+        alert(`Tan ca thành công!\n\nLƯU Ý: ${res.data.warning}\nDanh sách chưa xong: ${res.data.unfinishedTasks.join(', ')}.\nAdmin đã nhận được thông báo này.`);
+      } else {
+        alert(`${type === 'in' ? 'Vào ca' : 'Tan ca'} thành công!`);
+      }
+      
       await fetchData();
     } catch (error: any) {
       alert(error.response?.data?.message || error.message || 'Lỗi điểm danh');
@@ -378,6 +385,9 @@ const ShiftCalendar: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {/* CHECKLIST CÔNG VIỆC TRONG CA */}
+              <ShiftChecklist date={selectedShift.date} shift={selectedShift.shift.id} />
 
               <div>
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Users size={14} className="text-blue-400" /> Nhân viên tham gia</label>
