@@ -11,6 +11,7 @@ import AbsentList from '../components/AbsentList';
 import TaskTemplateManager from '../components/TaskTemplateManager';
 import AIChat from '../components/AIChat';
 import NotificationCenter from '../components/NotificationCenter';
+import PayrollPanel from '../components/PayrollPanel';
 import type { Employee, AttendanceRecord } from '../types';
 import { io } from 'socket.io-client';
 
@@ -20,7 +21,7 @@ function Dashboard() {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'employees' | 'attendance' | 'schedules' | 'admin_schedules' | 'attendance_sheet' | 'summary' | 'absents' | 'task_templates' | 'notifications'>('schedules');
+  const [activeTab, setActiveTab] = useState<'employees' | 'attendance' | 'schedules' | 'admin_schedules' | 'attendance_sheet' | 'summary' | 'absents' | 'task_templates' | 'notifications' | 'payroll'>('schedules');
   const [filterDate, setFilterDate] = useState<string>('');
 
   const [formData, setFormData] = useState<Omit<Employee, '_id'>>({
@@ -196,6 +197,12 @@ function Dashboard() {
               >
                 <Bell size={18} /> Thong bao
               </button>
+              <button
+                onClick={() => setActiveTab('payroll')}
+                className={`flex min-w-0 items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === 'payroll' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}
+              >
+                <DollarSign size={18} /> Luong
+              </button>
               {user?.role === 'admin' && (
                 <button
                   onClick={() => setActiveTab('task_templates')}
@@ -279,7 +286,7 @@ function Dashboard() {
                           <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Họ tên</th>
                           <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Liên hệ</th>
                           <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Vị trí</th>
-                          <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Lương</th>
+                          <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Lương/giờ</th>
                           <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Trạng thái</th>
                         </tr>
                       </thead>
@@ -298,7 +305,7 @@ function Dashboard() {
                                 <div>{emp.position}</div>
                                 <div className="text-slate-500 text-xs">{emp.department}</div>
                               </td>
-                              <td className="px-6 py-4 font-mono text-blue-400">{emp.salary?.toLocaleString()} đ</td>
+                              <td className="px-6 py-4 font-mono text-blue-400">{emp.salary?.toLocaleString()} đ/giờ</td>
                               <td className="px-6 py-4">
                                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${emp.status === 'active' ? 'bg-green-500/10 text-green-400' : 'bg-slate-500/10 text-slate-400'}`}>
                                   {emp.status === 'active' ? 'Đang làm việc' : 'Nghỉ việc'}
@@ -362,6 +369,7 @@ function Dashboard() {
             {activeTab === 'schedules' && <ShiftCalendar />}
             {activeTab === 'absents' && <AbsentList />}
             {activeTab === 'notifications' && <NotificationCenter />}
+            {activeTab === 'payroll' && <PayrollPanel />}
             {activeTab === 'task_templates' && user?.role === 'admin' && <TaskTemplateManager />}
             {activeTab === 'admin_schedules' && user?.role === 'admin' && <AdminScheduleOverview />}
             {activeTab === 'attendance_sheet' && user?.role === 'admin' && <AdminAttendanceSheet />}
@@ -447,7 +455,7 @@ function Dashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-1.5">Mức lương (VNĐ)</label>
+                  <label className="block text-sm font-medium text-slate-400 mb-1.5">Lương/giờ (VNĐ)</label>
                   <div className="relative">
                     <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                     <input

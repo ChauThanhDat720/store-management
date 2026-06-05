@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import Attendance from '../models/Attendance';
 import Schedule from '../models/Schedule';
 import User from '../models/User';
-import { AuthRequest } from '../middleware/authMiddleware'; // custom request type with user
+import { AuthRequest } from '../middleware/authMiddleware';
 import axios from 'axios';
 import cron from 'node-cron';
 import { getIO } from '../utils/socketManager';
@@ -25,19 +25,40 @@ const validateLocation = (latitude: number, longitude: number, accuracy: number)
   return null;
 };
 
+// const getAddressFromCoords = async (latitude: number, longitude: number) => {
+//   try {
+//     const { data } = await axios.get(
+//       `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=vi`,
+//       { timeout: 5000 }
+//     );
+//     let address = data.locality || data.city || data.principalSubdivision || 'Không xác định';
+//     if (data.locality && data.city && data.locality !== data.city) {
+//       address = `${data.locality}, ${data.city}`;
+//     }
+//     return address;
+//   } catch (err) {
+//     console.error('Lỗi lấy địa chỉ:', err instanceof Error ? err.message : err);
+//     return 'Không xác định';
+//   }
+// };
 const getAddressFromCoords = async (latitude: number, longitude: number) => {
   try {
     const { data } = await axios.get(
-      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=vi`,
-      { timeout: 5000 }
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&accept-language=vi`,
+      {
+        timeout: 5000,
+        headers: {
+          // QUAN TRỌNG: Nominatim yêu cầu phải có User-Agent định danh ứng dụng của bạn,
+          // nếu không truyền header này bạn rất dễ bị chặn (lỗi 403).
+          'User-Agent': 'MyStoreManagementApp/1.0'
+        }
+      }
     );
-    let address = data.locality || data.city || data.principalSubdivision || 'Không xác định';
-    if (data.locality && data.city && data.locality !== data.city) {
-      address = `${data.locality}, ${data.city}`;
-    }
-    return address;
+
+    // data.display_name chứa toàn bộ địa chỉ cụ thể được xếp từ nhỏ đến lớn
+    return data.display_name || 'Không xác định';
   } catch (err) {
-    console.error('Lỗi lấy địa chỉ:', err instanceof Error ? err.message : err);
+    console.error('Lỗi lấy địa chỉ (OSM):', err instanceof Error ? err.message : err);
     return 'Không xác định';
   }
 };
@@ -76,34 +97,40 @@ const calculateCheckOutStatus = (currentStatus: string, now: Date, shift?: 'morn
 export const checkIn = async (req: AuthRequest, res: Response) => {
   try {
     const { latitude, longitude, accuracy, scheduleId } = req.body;
+    const userId = req.user?.id;
+
     if (!scheduleId) return res.status(400).json({ message: 'Vui lòng chọn ca làm việc để điểm danh' });
 
     const locationError = validateLocation(latitude, longitude, accuracy);
     if (locationError) return res.status(400).json({ message: locationError });
 
-    const userId = req.user?.id;
-    const date = getTodayDate();
-    const user = await User.findById(userId);
+    const [user, schedule] = await Promise.all([
+      User.findById(userId).select('fullName').lean(),
+      Schedule.findById(scheduleId).lean()
+    ])
 
 
-    const schedule = await Schedule.findById(scheduleId);
     if (!schedule || schedule.userId.toString() !== userId) {
       return res.status(400).json({ message: 'Ca làm việc không hợp lệ hoặc không thuộc về bạn' });
     }
 
+    const date = getTodayDate();
     if (schedule.date !== date) {
       return res.status(400).json({ message: 'Bạn chỉ có thể điểm danh cho ca làm của ngày hôm nay' });
     }
 
-    const existing = await Attendance.findOne({ schedule: scheduleId });
-    if (existing?.checkIn) return res.status(400).json({ message: 'Bạn đã điểm danh cho ca làm này rồi' });
+    // const existing = await Attendance.findOne({ schedule: scheduleId });
+    // if (existing?.checkIn) return res.status(400).json({ message: 'Bạn đã điểm danh cho ca làm này rồi' });
 
-    const address = await getAddressFromCoords(latitude, longitude);
     const now = new Date();
     const status = calculateCheckInStatus(now, schedule.shift);
 
+    const address = await getAddressFromCoords(latitude, longitude);
     const attendance = await Attendance.findOneAndUpdate(
-      { schedule: scheduleId },
+      {
+        schedule: scheduleId,
+        checkIn: { $exists: false }
+      },
       {
         userId, date, status,
         checkIn: now,
@@ -112,6 +139,9 @@ export const checkIn = async (req: AuthRequest, res: Response) => {
       },
       { upsert: true, new: true }
     );
+    if (!attendance) {
+      return res.status(400).json({ message: 'Bạn đã điểm danh cho ca làm này rồi' });
+    }
     const io = getIO();
     io.emit('attendanceUpdated', attendance);
     io.to('admin_room').emit('new_attendance_alert', {

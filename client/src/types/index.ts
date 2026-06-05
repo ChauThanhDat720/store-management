@@ -109,4 +109,47 @@ export type NotificationRecord = {
   readAt?: string;
 };
 
+export type PayrollAdjustment = {
+  _id: string;
+  userId: string;
+  month: number;
+  year: number;
+  amount: number;
+  type: 'allowance' | 'deduction' | 'bonus' | 'penalty';
+  reason: string;
+  note?: string;
+};
+
+export type PayrollSummary = {
+  user: {
+    _id: string;
+    fullName: string;
+    email: string;
+    position?: string;
+    department?: string;
+  };
+  month: number;
+  year: number;
+  totalRegisteredShifts: number;
+  completedShifts: number;
+  absentShifts: number;
+  approvedAbsentRequests: number;
+  lateCount: number;
+  earlyCount: number;
+  totalHours: number;
+  hourlyRate: number;
+  estimatedSalary: number;
+  totalAllowance: number;
+  totalDeduction: number;
+  officialSalary: number | null;
+  payrollStatus: 'draft' | 'finalized' | 'paid';
+  finalizedAt?: string | null;
+  finalizationNote?: string;
+  adjustments: PayrollAdjustment[];
+  details: Array<{
+    schedule: ScheduleRecord;
+    attendance: AttendanceRecord | null;
+  }>;
+};
+
 export {};
