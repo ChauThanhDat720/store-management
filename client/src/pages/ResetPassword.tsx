@@ -1,33 +1,46 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { useAuth } from '../context/AuthContext';
-import { Mail, Lock, LogIn, Store, AlertCircle, Loader2 } from 'lucide-react';
+import { Lock, Store, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 
-const Login: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+const ResetPassword: React.FC = () => {
+  const { token } = useParams<{ token: string }>();
+  const navigate = useNavigate();
   
-  const { login } = useAuth();
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
+
+    if (password !== confirmPassword) {
+      setError('Mật khẩu xác nhận không khớp.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Mật khẩu phải có ít nhất 6 ký tự.');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const response = await api.post('/auth/login', {
-        email,
-        password,
-      });
+      const response = await api.post(`/auth/reset-password/${token}`, { password });
+      setSuccess(response.data?.message || 'Đặt lại mật khẩu thành công!');
       
-      const { token, user } = response.data;
-      login(token, user);
-      window.location.href = '/'; 
+      // Chuyển hướng về trang đăng nhập sau 3 giây
+      setTimeout(() => {
+        navigate('/login');
+      }, 3000);
+      
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
+      setError(err.response?.data?.message || 'Đường dẫn không hợp lệ hoặc đã hết hạn.');
     } finally {
       setLoading(false);
     }
@@ -46,8 +59,8 @@ const Login: React.FC = () => {
               <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl shadow-xl shadow-blue-500/20 mb-6 rotate-3 transform hover:rotate-0 transition-transform duration-300">
                 <Store className="text-white" size={40} />
               </div>
-              <h2 className="text-3xl font-extrabold text-white tracking-tight">Chào mừng trở lại</h2>
-              <p className="text-slate-400 mt-2">Đăng nhập vào tài khoản của bạn</p>
+              <h2 className="text-3xl font-extrabold text-white tracking-tight">Mật khẩu mới</h2>
+              <p className="text-slate-400 mt-2">Vui lòng nhập mật khẩu mới của bạn</p>
             </div>
 
             {error && (
@@ -57,29 +70,19 @@ const Login: React.FC = () => {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300 ml-1">Email</label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-blue-400 transition-colors">
-                    <Mail size={18} />
-                  </div>
-                  <input 
-                    type="email" 
-                    value={email} 
-                    onChange={(e) => setEmail(e.target.value)} 
-                    required 
-                    placeholder="name@company.com"
-                    className="w-full bg-slate-950/50 border border-slate-800 text-white pl-12 pr-4 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-600"
-                  />
+            {success && (
+              <div className="bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-3 rounded-2xl mb-8 flex items-center gap-3 text-sm animate-in slide-in-from-top-2 duration-200">
+                <CheckCircle2 size={18} />
+                <div>
+                  {success}
+                  <p className="text-xs mt-1 text-green-500/80">Đang chuyển hướng về trang đăng nhập...</p>
                 </div>
               </div>
+            )}
 
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <div className="flex justify-between items-center ml-1">
-                  <label className="text-sm font-medium text-slate-300">Mật khẩu</label>
-                  <Link to="/forgot-password" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">Quên mật khẩu?</Link>
-                </div>
+                <label className="text-sm font-medium text-slate-300 ml-1">Mật khẩu mới</label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-blue-400 transition-colors">
                     <Lock size={18} />
@@ -95,18 +98,32 @@ const Login: React.FC = () => {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-300 ml-1">Xác nhận mật khẩu</label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-blue-400 transition-colors">
+                    <Lock size={18} />
+                  </div>
+                  <input 
+                    type="password" 
+                    value={confirmPassword} 
+                    onChange={(e) => setConfirmPassword(e.target.value)} 
+                    required 
+                    placeholder="••••••••"
+                    className="w-full bg-slate-950/50 border border-slate-800 text-white pl-12 pr-4 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-600"
+                  />
+                </div>
+              </div>
+
               <button 
                 type="submit" 
-                disabled={loading}
+                disabled={loading || !!success}
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-600/20 transform transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 mt-8"
               >
                 {loading ? (
                   <Loader2 className="animate-spin" size={24} />
                 ) : (
-                  <>
-                    <LogIn size={20} />
-                    <span>Đăng Nhập</span>
-                  </>
+                  <span>Cập nhật mật khẩu</span>
                 )}
               </button>
             </form>
@@ -117,4 +134,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default ResetPassword;

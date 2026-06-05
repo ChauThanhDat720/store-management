@@ -13,6 +13,8 @@ export interface IUser extends Document {
   startDate?: Date;
   status?: 'active' | 'inactive';
   avatar?: string;
+  resetPasswordToken?: String;
+  resetPasswordExpires?: Date;
 }
 
 // 2. Tạo Schema
@@ -29,6 +31,8 @@ const UserSchema: Schema = new Schema(
     startDate: { type: Date, default: Date.now },
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },
     avatar: { type: String },
+    resetPasswordToken: { type: String },
+    resetPasswordExpires: { type: Date },
   },
   { timestamps: true }
 );
